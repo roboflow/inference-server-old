@@ -1,3 +1,5 @@
+server/package*.json
+
 # Logs
 logs
 *.log
