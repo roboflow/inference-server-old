@@ -24,7 +24,10 @@ const package_info = JSON.parse(fs.readFileSync(__dirname + "/package.json"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
 	extended: true,
-    limit: "100mb"
+    limit: "100mb",
+    verify: function(req, res, buf) {
+        req.rawBody = buf;
+    }
 }));
 app.use(bodyParser.text());
 app.use(cookieParser);
@@ -44,16 +47,93 @@ app.get("/", function(req, res) {
     });
 });
 
+var models = {};
+var loading = {};
+
 var infer = function(req, res) {
-    res.json({
-        publishable_key: req.publishable_key,
-        dataset: req.dataset,
-        version: req.version
+    var buffer = Buffer.from(req.body, "base64");
+    var arr = new Uint8Array(buffer);
+    var tensor = roboflow.tf.node.decodeImage(arr);
+
+    req.model.detect(tensor).then(function(predictions) {
+        res.json(predictions);
     });
+};
+
+var loadAndInfer = function(req, res) {
+    var modelId = [req.dataset, req.version].join("/");
+    if(models[modelId]) {
+        // model is already loaded
+        req.model = models[modelId];
+        infer(req, res);
+    } else if(loading[modelId]) {
+        // model is already loading... wait for it to finish
+        loading[modelId].push({
+            req: req,
+            res: res
+        });
+    } else {
+        // need to load the model still
+        loading[modelId] = [{
+            req: req,
+            res: res
+        }];
+
+        roboflow.auth({
+            publishable_key: req.publishable_key
+        }).load({
+            model: req.dataset,
+            version: req.version
+        }).then(function(model) {
+            models[modelId] = model;
+
+            _.each(loading[modelId], function(info) {
+                var req = info.req;
+                var res = info.res;
+
+                req.model = model;
+                _.defer(function() {
+                    infer(req, res);
+                });
+            });
+
+            delete loading[modelId];
+        }).catch(function(e) {
+            _.each(loading[modelId], function(info) {
+                res.json({
+                    error: e
+                });
+            });
+
+            delete loading[modelId];
+        });
+    }
+};
+
+var transformImageBody = function(req, res, next) {
+    if(req.rawBody) req.body = req.rawBody.toString();
+    if(req.body) {
+    	req.body = req.body.replace(/^data:image\/\w+;base64,/, "");
+    	req.body = req.body.replace(/ /g, '+');
+    }
+
+	if(!req.body || !req.body.length || req.body.length < 4) {
+		res.status(401).json({
+			error: {
+				message: "Image parameter not found.",
+				type: "InvalidParameterException",
+				hint: "Pass a base64 encoded image as the request body or a (url-encoded) image url in the query string as `image`."
+			}
+		});
+		return;
+	}
+
+    next();
 };
 
 app.post(
     "/:model",
+    transformImageBody,
     require(__dirname + "/convertAccessToken.js"),
     function(req, res) {
         var modelRaw = req.params.model;
@@ -73,18 +153,19 @@ app.post(
         req.dataset = dataset;
         req.version = version;
 
-        infer(req, res);
+        loadAndInfer(req, res);
     }
 );
 
 app.post(
     "/:dataset/:version",
+    transformImageBody,
     require(__dirname + "/convertAccessToken.js"),
     function(req, res) {
         req.dataset = req.params.dataset;
         req.version = req.params.version;
 
-        infer(req, res);
+        loadAndInfer(req, res);
     }
 );
 
