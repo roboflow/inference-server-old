@@ -64,7 +64,7 @@ var infer = function(req, res) {
                     width: Math.round(p.bbox.width),
                     height: Math.round(p.bbox.height),
                     class: p.class,
-                    confidence: p.confidence
+                    confidence: Math.round(p.confidence * 1000) / 1000
                 };
             })
         });
