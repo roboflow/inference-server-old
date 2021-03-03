@@ -56,7 +56,18 @@ var infer = function(req, res) {
     var tensor = roboflow.tf.node.decodeImage(arr);
 
     req.model.detect(tensor).then(function(predictions) {
-        res.json(predictions);
+        res.json({
+            predictions: _.map(predictions, function(p) {
+                return {
+                    x: Math.round(p.bbox.x * 10)/10,
+                    y: Math.round(p.bbox.y * 10)/10,
+                    width: Math.round(p.bbox.width),
+                    height: Math.round(p.bbox.height),
+                    class: p.class,
+                    confidence: p.confidence
+                };
+            })
+        });
     });
 };
 
@@ -83,7 +94,10 @@ var loadAndInfer = function(req, res) {
             publishable_key: req.publishable_key
         }).load({
             model: req.dataset,
-            version: req.version
+            version: req.version,
+            onMetadata: function(metadata) {
+                // console.log("Loaded metadata", metadata);
+            }
         }).then(function(model) {
             models[modelId] = model;
 

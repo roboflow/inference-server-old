@@ -1,5 +1,5 @@
 {
-  "name": "roboflow-inference-server-cpu",
+  "name": "roboflow-inference-server-gpu",
   "private": true,
   "version": "1.0.0",
   "description": "Roboflow Infer on-prem server.",
@@ -39,6 +39,6 @@
     "express": "^4.17.1",
     "express-bearer-token": "^2.4.0",
     "lodash": "^4.17.21",
-    "roboflow-node": "^0.2.3"
+    "roboflow-node-gpu": "^0.2.3"
   }
 }
