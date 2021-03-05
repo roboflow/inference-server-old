@@ -68,6 +68,12 @@ var infer = function(req, res) {
                 };
             })
         });
+    }).catch(function(e) {
+        res.json({
+            error: e
+        });
+    }).finally(function() {
+        roboflow.tf.dispose(tensor);
     });
 };
 
