@@ -96,15 +96,21 @@ var loadAndInfer = function(req, res) {
             res: res
         }];
 
+		console.log("Downloading weights for " + req.dataset + "/" + req.version);
+		var start = Date.now();
         roboflow.auth({
             publishable_key: req.publishable_key
         }).load({
             model: req.dataset,
             version: req.version,
             onMetadata: function(metadata) {
-                // console.log("Loaded metadata", metadata);
+                console.log("Weights downloaded in", ((Date.now() - start)/1000).toFixed(2), "seconds");
+				start = Date.now();
+				console.log("Initializing model...");
             }
         }).then(function(model) {
+			console.log("Model prepared in", ((Date.now() - start)/1000).toFixed(2), "seconds");
+
             models[modelId] = model;
 
             _.each(loading[modelId], function(info) {
