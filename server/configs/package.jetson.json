@@ -39,6 +39,6 @@
     "express": "^4.17.1",
     "express-bearer-token": "^2.4.0",
     "lodash": "^4.17.21",
-    "roboflow-jetson": "^0.2.3"
+    "roboflow-jetson": "^0.2.6"
   }
 }
