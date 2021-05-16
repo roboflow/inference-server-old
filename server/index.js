@@ -51,6 +51,12 @@ var models = {};
 var loading = {};
 
 var infer = function(req, res) {
+	if(req.query.format && req.query.format == "image") {
+		return res.json({
+			error: "The inference server does not yet support returning a visualization of the prediction."
+		});
+	}
+
     var buffer = Buffer.from(req.body, "base64");
     var arr = new Uint8Array(buffer);
 
@@ -70,11 +76,36 @@ var infer = function(req, res) {
 		roboflow.tf.dispose(channel);
 	}
 
-	console.log(tensor.shape);
+	var configuration = {
+		max_objects: Number.MAX_SAFE_INTEGER
+	};
+
+	if(req.query.overlap) {
+		req.query.overlap = parseFloat(req.query.overlap);
+		if(req.query.overlap > 1) req.query.overlap /= 100;
+		configuration.overlap = req.query.overlap;
+	}
+
+	if(req.query.confidence) {
+		req.query.confidence = parseFloat(req.query.confidence);
+		if(req.query.confidence > 1) req.query.confidence /= 100;
+		configuration.threshold = req.query.confidence;
+	}
+
+	var allowed_classes = null; // allow all
+	if(req.query.classes) {
+		allowed_classes = _.map(req.query.classes.split(","), function(cls) {
+			return cls.trim();
+		});
+	}
+
+	req.model.configure(configuration);
 
     req.model.detect(tensor).then(function(predictions) {
         res.json({
-            predictions: _.map(predictions, function(p) {
+            predictions: _.chain(predictions).map(function(p) {
+				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
+
                 return {
                     x: Math.round(p.bbox.x * 10)/10,
                     y: Math.round(p.bbox.y * 10)/10,
@@ -83,7 +114,7 @@ var infer = function(req, res) {
                     class: p.class,
                     confidence: Math.round(p.confidence * 1000) / 1000
                 };
-            })
+            }).filter().value()
         });
     }).catch(function(e) {
         res.json({
