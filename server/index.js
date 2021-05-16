@@ -53,7 +53,24 @@ var loading = {};
 var infer = function(req, res) {
     var buffer = Buffer.from(req.body, "base64");
     var arr = new Uint8Array(buffer);
-    var tensor = roboflow.tf.node.decodeImage(arr);
+
+	var tensor;
+	try {
+		// works for decoding 3 channel (rgb) and 4 channel (rgba) images
+    	tensor = roboflow.tf.node.decodeImage(arr, 3);
+	} catch(e) {
+		// handle 1 channel (grayscale) images
+		// which throw an error if you try to force them to be decoded with 3 channels
+		var channel = roboflow.tf.node.decodeImage(arr, 1);
+		tensor = roboflow.tf.stack([
+			channel,
+			channel,
+			channel
+		], 2).squeeze();
+		roboflow.tf.dispose(channel);
+	}
+
+	console.log(tensor.shape);
 
     req.model.detect(tensor).then(function(predictions) {
         res.json({
