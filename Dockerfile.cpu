@@ -4,7 +4,7 @@ ENV TZ=Etc/UTC
 ENV ROBOFLOW_PACKAGE="roboflow-node"
 
 RUN apt update
-RUN apt-get -y install curl net-tools
+RUN apt-get -y install curl net-tools build-essential python3
 
 # Install NVM and Node.js LTS
 RUN curl -L https://raw.githubusercontent.com/tj/n/master/bin/n -o /usr/local/bin/n
