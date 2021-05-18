@@ -84,6 +84,7 @@ var infer = function(req, res) {
 		req.query.overlap = parseFloat(req.query.overlap);
 		if(req.query.overlap > 1) req.query.overlap /= 100;
 		configuration.overlap = req.query.overlap;
+		configuration.nms_threshold = req.query.overlap;
 	}
 
 	if(req.query.confidence) {
