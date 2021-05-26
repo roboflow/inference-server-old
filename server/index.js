@@ -77,7 +77,10 @@ var infer = function(req, res) {
 	}
 
 	var configuration = {
-		max_objects: Number.MAX_SAFE_INTEGER
+		max_objects: Number.MAX_SAFE_INTEGER,
+		overlap: 0.3,
+		nms_threshold: 0.3,
+		threshold: 0.4
 	};
 
 	if(req.query.overlap) {
