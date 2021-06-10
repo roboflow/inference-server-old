@@ -9,6 +9,13 @@ var parseToken = bearerToken({
 	reqKey: "key"
 });
 
+var parseKey = bearerToken({
+	bodyKey: "api_key",
+	queryKey: "api_key",
+	headerKey: "Bearer",
+	reqKey: "key"
+});
+
 var keys = {};
 
 module.exports = function(req, res, next) {
@@ -17,7 +24,14 @@ module.exports = function(req, res, next) {
         return next();
     }
 
-    parseToken(req, res, function() {
+	var parse = parseToken;
+	var route = "publishable_key";
+	if(req.newFormat) {
+		parse = parseKey;
+		route = "convert_key";
+	}
+
+    parse(req, res, function() {
         if(!req.key) {
     		res.status(401).json({
     			error: {
@@ -36,7 +50,7 @@ module.exports = function(req, res, next) {
 
         axios({
             method: "GET",
-            url: "https://api.roboflow.com/publishable_key",
+            url: "https://api.roboflow.com/" + route,
             params: {
                 api_key: req.key
             }

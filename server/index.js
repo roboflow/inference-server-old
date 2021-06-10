@@ -238,6 +238,10 @@ app.post(
 app.post(
     "/:dataset/:version",
     transformImageBody,
+	function(req, res, next) {
+		req.newFormat = true;
+		next();
+	},
     require(__dirname + "/convertAccessToken.js"),
     function(req, res) {
         req.dataset = req.params.dataset;
