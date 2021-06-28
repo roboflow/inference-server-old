@@ -3,6 +3,7 @@
 const express = require("express");
 
 const roboflow_package = process.env.ROBOFLOW_PACKAGE || "roboflow-node";
+//const roboflow_package = "/Users/wolf/roboflow/roboflow-infer-web/node/dist/0.2.6/roboflow.js";
 const roboflow = require(roboflow_package);
 
 const app = express();
