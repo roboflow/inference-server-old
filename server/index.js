@@ -252,4 +252,11 @@ app.post(
     }
 );
 
+app.get(
+	"/cache/:dataset/:version/:file",
+	function(req, res) {
+		res.sendFile("/cache/" + req.params.dataset + '/' + req.params.version + '/' + req.params.file);
+	}
+);
+
 app.listen(port);
