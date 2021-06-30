@@ -62,6 +62,11 @@ module.exports = function(req, res, next) {
             } else {
                 res.json(response.data);
             }
-        });
+        }).catch(function(err) {
+			//if no network access just pass through the key, becasue it won't get checked anyway
+			req.publishable_key = req.key;
+			keys[req.key] = req.publishable_key;
+			return next();
+		});
     });
 };
