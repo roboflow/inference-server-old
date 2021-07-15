@@ -3,6 +3,7 @@
 const express = require("express");
 
 const roboflow_package = process.env.ROBOFLOW_PACKAGE || "roboflow-node";
+//const roboflow_package = "/Users/wolf/roboflow/roboflow-infer-web/node/dist/0.2.6/roboflow.js";
 const roboflow = require(roboflow_package);
 
 const app = express();
@@ -249,6 +250,13 @@ app.post(
 
         loadAndInfer(req, res);
     }
+);
+
+app.get(
+	"/cache/:dataset/:version/:file",
+	function(req, res) {
+		res.sendFile("/cache/" + req.params.dataset + '/' + req.params.version + '/' + req.params.file);
+	}
 );
 
 app.listen(port);
