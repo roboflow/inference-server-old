@@ -18,6 +18,10 @@ var parseKey = bearerToken({
 
 var keys = {};
 
+const fs = require("fs");
+const crypto = require("crypto");
+if(fs.existsSync('/cache/keys.json')) keys = JSON.parse(fs.readFileSync('/cache/keys.json'));
+
 module.exports = function(req, res, next) {
     if(req.query.publishable_key) {
         req.publishable_key = req.query.publishable_key;
@@ -43,21 +47,35 @@ module.exports = function(req, res, next) {
     		return;
     	}
 
-        if(keys[req.key]) {
-            req.publishable_key = keys[req.key];
+		var keyHash = crypto.createHash('md5').update(req.key).digest('hex');
+
+        if(keys[keyHash]) {
+            req.publishable_key = keys[keyHash];
             return next();
         }
 
+		var url = "https://api.roboflow.com/" + route;
+		if(process && process.env && process.env.LICENSE_SERVER) {
+			url = "http://" + process.env.LICENSE_SERVER + "/proxy?url=" + encodeURIComponent(url);
+		}
+
         axios({
             method: "GET",
-            url: "https://api.roboflow.com/" + route,
+            url: url,
             params: {
                 api_key: req.key
             }
         }).then(function(response) {
             if(response.data && response.data.publishable_key) {
                 req.publishable_key = response.data.publishable_key;
-                keys[req.key] = req.publishable_key;
+                keys[keyHash] = req.publishable_key;
+
+				try {
+					if(fs.existsSync('/cache/')) {
+						fs.writeFileSync('/cache/keys.json', JSON.stringify(keys));
+					}
+				} catch(e) {}
+
                 return next();
             } else {
                 res.json(response.data);
@@ -65,7 +83,7 @@ module.exports = function(req, res, next) {
         }).catch(function(err) {
 			//if no network access just pass through the key, becasue it won't get checked anyway
 			req.publishable_key = req.key;
-			keys[req.key] = req.publishable_key;
+			// keys[keyHash] = req.publishable_key;
 			return next();
 		});
     });

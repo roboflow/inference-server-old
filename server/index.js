@@ -107,7 +107,7 @@ var infer = function(req, res) {
 	req.model.configure(configuration);
 
     req.model.detect(tensor).then(function(predictions) {
-        res.json({
+		var ret = {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
 
@@ -120,7 +120,12 @@ var infer = function(req, res) {
                     confidence: Math.round(p.confidence * 1000) / 1000
                 };
             }).filter().value()
-        });
+        };
+
+		var conf = req.model.getConfiguration();
+		if(conf.expiration) ret.expiration = conf.expiration;
+
+        res.json(ret);
     }).catch(function(e) {
         res.json({
             error: e
