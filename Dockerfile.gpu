@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
+FROM nvidia/cuda:11.4.1-cudnn8-devel-ubuntu20.04
 MAINTAINER Roboflow <docker@roboflow.com>
 ENV TZ=Etc/UTC
 ENV ROBOFLOW_PACKAGE="roboflow-node-gpu"
@@ -22,7 +22,7 @@ WORKDIR /inference-server/server
 RUN rm -rf ./node_modules
 RUN npm install
 
-RUN ln -s /usr/local/cuda/bin/ptxas bin/ptxas
-RUN chmod +x bin/ptxas
+# RUN ln -s /usr/local/cuda/bin/ptxas bin/ptxas
+# RUN chmod +x bin/ptxas
 
 ENTRYPOINT ["pm2-runtime", "pm2.config.js"]
