@@ -35,6 +35,8 @@ app.use(cookieParser);
 
 app.set("json spaces", 4);
 
+const SERVER_START = Date.now();
+
 app.get("/", function(req, res) {
     res.json({
         server: {
@@ -57,6 +59,8 @@ var infer = function(req, res) {
 			error: "The inference server does not yet support returning a visualization of the prediction."
 		});
 	}
+
+	var start = Date.now();
 
     var buffer = Buffer.from(req.body, "base64");
     var arr = new Uint8Array(buffer);
@@ -107,6 +111,9 @@ var infer = function(req, res) {
 	req.model.configure(configuration);
 
     req.model.detect(tensor).then(function(predictions) {
+		req.model.inferences = (req.model.inferences||0)+1;
+		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
+
 		var ret = {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
@@ -264,4 +271,39 @@ app.get(
 	}
 );
 
+app.get("/health", function(req, res) {
+	res.status(200).json({
+		status: "up"
+	});
+});
+
+app.get("/stats", function(req, res) {
+	res.status(200).json({
+		server: {
+            package: package_info.name,
+            version: package_info.version
+        },
+        roboflow: {
+            package: roboflow_package,
+            version: roboflow.VERSION
+        },
+		uptime: (Date.now() - SERVER_START)/1000,
+		models: {
+			loading: _.keys(loading),
+			ready: _.keys(models)
+		},
+		stats: _.mapValues(models, function(m) {
+			return {
+				inferences: (m.inferences || 0),
+				latency: m.inferences ? m.totalTime/m.inferences/1000 : 0,
+				fps: m.inferences ? m.inferences/(m.totalTime/1000) : 0
+			};
+		})
+	});
+});
+
 app.listen(port);
+
+_.defer(function() {
+	console.log("inference-server is ready to receive traffic.");
+});
