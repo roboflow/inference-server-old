@@ -54,7 +54,7 @@ module.exports = function(req, res, next) {
             return next();
         }
 
-		var url = "https://api.roboflow.com/" + route;
+		var url = req.staging ?  "https://api.staging.roboflow.com/" + route : "https://api.roboflow.com/" + route;
 		if(process && process.env && process.env.LICENSE_SERVER) {
 			url = "http://" + process.env.LICENSE_SERVER + "/proxy?url=" + encodeURIComponent(url);
 		}
