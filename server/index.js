@@ -22,7 +22,8 @@ const fs = require("fs");
 
 const package_info = JSON.parse(fs.readFileSync(__dirname + "/package.json"));
 
-var staging = true;
+//var staging = true;
+var staging = false;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
