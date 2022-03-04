@@ -22,6 +22,9 @@ const fs = require("fs");
 
 const package_info = JSON.parse(fs.readFileSync(__dirname + "/package.json"));
 
+//var staging = true;
+var staging = false;
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
 	extended: true,
@@ -253,6 +256,7 @@ app.post(
     transformImageBody,
 	function(req, res, next) {
 		req.newFormat = true;
+        req.staging = staging;
 		next();
 	},
     require(__dirname + "/convertAccessToken.js"),
