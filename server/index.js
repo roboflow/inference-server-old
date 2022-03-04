@@ -256,7 +256,7 @@ app.post(
     transformImageBody,
 	function(req, res, next) {
 		req.newFormat = true;
-        req.staging = staging;
+        	req.staging = staging;
 		next();
 	},
     require(__dirname + "/convertAccessToken.js"),
