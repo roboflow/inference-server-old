@@ -88,7 +88,10 @@ var infer = function(req, res) {
 		max_objects: Number.MAX_SAFE_INTEGER,
 		overlap: 0.3,
 		nms_threshold: 0.3,
-		threshold: 0.4
+		threshold: 0.4,
+        tile: false,
+        tile_rows: 1,
+        tile_cols: 1,
 	};
 
 	if(req.query.overlap) {
@@ -102,6 +105,24 @@ var infer = function(req, res) {
 		req.query.confidence = parseFloat(req.query.confidence);
 		if(req.query.confidence > 1) req.query.confidence /= 100;
 		configuration.threshold = req.query.confidence;
+	}
+
+    //takes a tile query parameter like so tile=3x5
+	if(req.query.tile) {
+        if(false){
+            return res.json({
+                error: "The inference server does not support this query parameter without a hosted image."
+            });
+        }
+        if (!req.query.tiles.match(/([0-9]+x[0-9]+)/)?.length > 0){
+            return res.json({
+                error: "Tile query parameter improperly formatted."
+            });
+        }
+		configuration.tile = true;
+        const rows_and_cols = req.query.tiles.split("x");
+        configuration.tile_rows = rows_and_cols[0];
+        configuration.tile_cols = rows_and_cols[1];
 	}
 
 	var allowed_classes = null; // allow all
