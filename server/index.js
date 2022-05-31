@@ -49,11 +49,13 @@ const split_image = (image, tileSize) => {
     return roboflow.tf.reshape(serialTiles, [-1, tileSize[1], tileSize[0], imageShape[2]])
 }
 //pad images to the nearest tile size, tile_size is [H, W]
-const padImage = (image3, tile_size, padding = "CONSTANT") => {
+const padImage = (image3, tile_size, padding = 0) => {
     const imagesize = image3.shape.slice(0,2);
-    const padding_ = roboflow.tf.cast(roboflow.tf.ceil(imagesize / tile_size), 'int32') * tile_size - imagesize
-    return roboflow.tf.pad(image3, [[0, padding_[0]], [0, padding_[1]], [0, 0]], padding)
+    const paddingX = Math.ceil(imagesize[0] / tile_size[0]) * tile_size[0] - imagesize[0]
+    const paddingY = Math.ceil(imagesize[1] / tile_size[1]) * tile_size[1] - imagesize[1]
+    return roboflow.tf.pad(image3, [[0, paddingX], [0, paddingY], [0, 0]], padding)
 }
+
 app.get("/", function(req, res) {
     res.json({
         server: {
