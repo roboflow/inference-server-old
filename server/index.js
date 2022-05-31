@@ -40,6 +40,14 @@ app.set("json spaces", 4);
 
 const SERVER_START = Date.now();
 
+//this splits a 3d tensor image into smaller tiles of the image
+//tile size is an array [h, w] of height and width of tile dimensions
+const split_image = (image, tileSize) => {
+    const imageShape = x.shape;
+    const tileRows = x.reshape([imageShape[0], -1, tileSize[1], imageShape[2]])
+    const serialTiles = roboflow.tf.transpose(tileRows, [1, 0, 2, 3])
+    return roboflow.tf.reshape(serialTiles, [-1, tileSize[1], tileSize[0], imageShape[2]])
+}
 app.get("/", function(req, res) {
     res.json({
         server: {
