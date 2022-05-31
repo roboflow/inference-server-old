@@ -87,8 +87,8 @@ const detect = (req, res, tensor, tile = false) => {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
 
-                const x = Math.round(p.bbox.x * 10)/10;
-                const y = Math.round(p.bbox.y * 10)/10;
+                let x = Math.round(p.bbox.x * 10)/10;
+                let y = Math.round(p.bbox.y * 10)/10;
 
                 //this needs to have the tile offset added if we're tiling
                 if(!!tile){
