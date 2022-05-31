@@ -78,11 +78,22 @@ var loading = {};
 //     tileDimensions: [3,3] 
 //     imageDimensions: [100,100] 
 // })
-const detect = (req, res, tensor, tile = false) => {
+const detect = (req, res, tensor, cb, tile = false) => {
     req.model.detect(tensor).then(function(predictions) {
 		req.model.inferences = (req.model.inferences||0)+1;
+
+
+        var start = Date.now();
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
 
+        var allowed_classes = null; // allow all
+        if(req.query.classes) {
+            allowed_classes = _.map(req.query.classes.split(","), function(cls) {
+                return cls.trim();
+            });
+        }
+
+        console.log(1)
 		var ret = {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
@@ -96,8 +107,8 @@ const detect = (req, res, tensor, tile = false) => {
                     const numX = Math.ceil(tile.imageDimensions[0] / tile.tileDimensions[0]);
 
                     // calculate the pixel offset based on tile index and dimensions
-                    const xOffset = index % numX * tile.dimensions[0];
-                    const yOffset = Math.floor(index / numY) * tile.dimensions[1];
+                    const xOffset = tile.index % numX * tile.tileDimensions[0];
+                    const yOffset = Math.floor(tile.index / numX) * tile.tileDimensions[1];
                     x = x + xOffset;
                     y = y + yOffset;
                 }
@@ -115,11 +126,12 @@ const detect = (req, res, tensor, tile = false) => {
 		var conf = req.model.getConfiguration();
 		if(conf.expiration) ret.expiration = conf.expiration;
 
-        res.json(ret);
+        cb(null, ret);
     }).catch(function(e) {
-        res.json({
-            error: e
-        });
+        cb(e, null)
+        // res.json({
+        //     error: e
+        // });
     }).finally(function() {
         roboflow.tf.dispose(tensor);
     });
@@ -195,12 +207,6 @@ var infer = function(req, res) {
         configuration.tile_cols = rows_and_cols[1];
 	}
 
-	var allowed_classes = null; // allow all
-	if(req.query.classes) {
-		allowed_classes = _.map(req.query.classes.split(","), function(cls) {
-			return cls.trim();
-		});
-	}
 
 	req.model.configure(configuration);
 
@@ -208,15 +214,35 @@ var infer = function(req, res) {
         const tileDimensions = [configuration.tile_rows, configuration.tile_cols];
         const paddedImage = padImage(tensor, tileDimensions);
         const tiles = splitImage(paddedImage, tileDimensions);
-        tiles.forEach((tile, index) => {
-            detect(req, res, tile, {
+        var combinedResult = [];
+        async.eachOfSeries(roboflow.tf.unstack(tiles), function(tile, index, cb) {
+            detect(req, res, tile, function(error, result) {
+                if(!error){
+                    combinedResult.push(...result.predictions);
+                } else {
+                    console.log("error after prediction ", error)
+                }
+                cb(null);
+            }, {
                 index: index,
                 tileDimensions: tileDimensions,
                 imageDimensions: tensor.shape
             });
-        })
+        }, function() {
+            // all done
+            // send res.json
+            res.json({
+                predictions: combinedResult
+            });
+            roboflow.tf.dispose(tensor);
+        });
     } else {
-        detect(req, res, tensor);
+        detect(req, res, tensor, function(error, result){
+            console.log("error on detect", error)
+            res.json({
+                predictions: result 
+            });
+        });
     }
 };
 
