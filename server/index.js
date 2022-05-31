@@ -42,7 +42,7 @@ const SERVER_START = Date.now();
 
 //this splits a 3d tensor image into smaller tiles of the image
 //tile size is an array [h, w] of height and width of tile dimensions
-const split_image = (image, tileSize) => {
+const splitImage = (image, tileSize) => {
     const imageShape = x.shape;
     const tileRows = x.reshape([imageShape[0], -1, tileSize[1], imageShape[2]])
     const serialTiles = roboflow.tf.transpose(tileRows, [1, 0, 2, 3])
