@@ -204,36 +204,20 @@ var infer = function(req, res) {
 
 	req.model.configure(configuration);
 
-    req.model.detect(tensor).then(function(predictions) {
-		req.model.inferences = (req.model.inferences||0)+1;
-		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
-
-		var ret = {
-            predictions: _.chain(predictions).map(function(p) {
-				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
-
-                return {
-                    x: Math.round(p.bbox.x * 10)/10,
-                    y: Math.round(p.bbox.y * 10)/10,
-                    width: Math.round(p.bbox.width),
-                    height: Math.round(p.bbox.height),
-                    class: p.class,
-                    confidence: Math.round(p.confidence * 1000) / 1000
-                };
-            }).filter().value()
-        };
-
-		var conf = req.model.getConfiguration();
-		if(conf.expiration) ret.expiration = conf.expiration;
-
-        res.json(ret);
-    }).catch(function(e) {
-        res.json({
-            error: e
-        });
-    }).finally(function() {
-        roboflow.tf.dispose(tensor);
-    });
+    if(configuration.tile === true){
+        const tileDimensions = [configuration.tile_rows, configuration.tile_cols];
+        const paddedImage = padImage(tensor, tileDimensions);
+        const tiles = splitImage(paddedImage, tileDimensions);
+        tiles.forEach((tile, index) => {
+            detect(req, res, tile, {
+                index: index,
+                tileDimensions: tileDimensions,
+                imageDimensions: tensor.shape
+            });
+        })
+    } else {
+        detect(req, res, tensor);
+    }
 };
 
 var loadAndInfer = function(req, res) {
