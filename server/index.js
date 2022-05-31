@@ -40,6 +40,7 @@ app.set("json spaces", 4);
 
 const SERVER_START = Date.now();
 
+//inspired by https://stackoverflow.com/questions/38235643/getting-started-with-tensorflow-split-image-into-sub-images
 //this splits a 3d tensor image into smaller tiles of the image
 //tile size is an array [h, w] of height and width of tile dimensions
 const splitImage = (image3, tileSize) => {
