@@ -72,6 +72,59 @@ app.get("/", function(req, res) {
 var models = {};
 var loading = {};
 
+//tile is structured like so:
+// {
+//     index: index,
+//     tileDimensions: [3,3] 
+//     imageDimensions: [100,100] 
+// })
+const detect = (req, res, tensor, tile = false) => {
+    req.model.detect(tensor).then(function(predictions) {
+		req.model.inferences = (req.model.inferences||0)+1;
+		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
+
+		var ret = {
+            predictions: _.chain(predictions).map(function(p) {
+				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
+
+                const x = Math.round(p.bbox.x * 10)/10;
+                const y = Math.round(p.bbox.y * 10)/10;
+
+                //this needs to have the tile offset added if we're tiling
+                if(!!tile){
+                    //number of rows and columns in each direction
+                    const numX = Math.ceil(tile.imageDimensions[0] / tile.tileDimensions[0]);
+
+                    // calculate the pixel offset based on tile index and dimensions
+                    const xOffset = index % numX * tile.dimensions[0];
+                    const yOffset = Math.floor(index / numY) * tile.dimensions[1];
+                    x = x + xOffset;
+                    y = y + yOffset;
+                }
+                return {
+                    x: x,
+                    y: y,
+                    width: Math.round(p.bbox.width),
+                    height: Math.round(p.bbox.height),
+                    class: p.class,
+                    confidence: Math.round(p.confidence * 1000) / 1000
+                };
+            }).filter().value()
+        };
+
+		var conf = req.model.getConfiguration();
+		if(conf.expiration) ret.expiration = conf.expiration;
+
+        res.json(ret);
+    }).catch(function(e) {
+        res.json({
+            error: e
+        });
+    }).finally(function() {
+        roboflow.tf.dispose(tensor);
+    });
+}
+
 var infer = function(req, res) {
 	if(req.query.format && req.query.format == "image") {
 		return res.json({
