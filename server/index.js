@@ -183,13 +183,14 @@ var infer = function(req, res) {
                 error: "The inference server does not support this query parameter without a hosted image."
             });
         }
-        if (!req.query.tiles.match(/([0-9]+x[0-9]+)/)?.length > 0){
+        //ensure the tile query param looks like tile=3x3
+        if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
             return res.json({
                 error: "Tile query parameter improperly formatted."
             });
         }
 		configuration.tile = true;
-        const rows_and_cols = req.query.tiles.split("x");
+        const rows_and_cols = req.query.tile.split("x");
         configuration.tile_rows = rows_and_cols[0];
         configuration.tile_cols = rows_and_cols[1];
 	}
