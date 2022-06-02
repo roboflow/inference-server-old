@@ -96,7 +96,6 @@ const detect = (req, res, tensor, cb, tile = false) => {
             });
         }
 
-        console.log(1)
 		var ret = {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
@@ -242,7 +241,9 @@ var infer = function(req, res) {
             });
         } else {
             detect(req, res, tensor, function(error, result){
-                console.log("error on detect", error)
+                if(error){
+                    console.log("error on detect", error)
+                }
                 res.json({
                     predictions: result 
                 });
