@@ -147,108 +147,108 @@ var infer = function(req, res) {
 		});
 	}
 
-	var start = Date.now();
+    roboflow.tf.tidy(() => {
 
-    var buffer = Buffer.from(req.body, "base64");
-    var arr = new Uint8Array(buffer);
+        var start = Date.now();
 
-	var tensor;
-	try {
-		// works for decoding 3 channel (rgb) and 4 channel (rgba) images
-    	tensor = roboflow.tf.node.decodeImage(arr, 3);
-	} catch(e) {
-		// handle 1 channel (grayscale) images
-		// which throw an error if you try to force them to be decoded with 3 channels
-		var channel = roboflow.tf.node.decodeImage(arr, 1);
-		tensor = roboflow.tf.stack([
-			channel,
-			channel,
-			channel
-		], 2).squeeze();
-		roboflow.tf.dispose(channel);
-	}
+        var buffer = Buffer.from(req.body, "base64");
+        var arr = new Uint8Array(buffer);
 
-	var configuration = {
-		max_objects: Number.MAX_SAFE_INTEGER,
-		overlap: 0.3,
-		nms_threshold: 0.3,
-		threshold: 0.4,
-        tile: false,
-        tile_rows: 1,
-        tile_cols: 1,
-	};
+        var tensor;
+        try {
+            // works for decoding 3 channel (rgb) and 4 channel (rgba) images
+            tensor = roboflow.tf.node.decodeImage(arr, 3);
+        } catch(e) {
+            // handle 1 channel (grayscale) images
+            // which throw an error if you try to force them to be decoded with 3 channels
+            var channel = roboflow.tf.node.decodeImage(arr, 1);
+            tensor = roboflow.tf.stack([
+                channel,
+                channel,
+                channel
+            ], 2).squeeze();
+            roboflow.tf.dispose(channel);
+        }
 
-	if(req.query.overlap) {
-		req.query.overlap = parseFloat(req.query.overlap);
-		if(req.query.overlap > 1) req.query.overlap /= 100;
-		configuration.overlap = req.query.overlap;
-		configuration.nms_threshold = req.query.overlap;
-	}
+        var configuration = {
+            max_objects: Number.MAX_SAFE_INTEGER,
+            overlap: 0.3,
+            nms_threshold: 0.3,
+            threshold: 0.4,
+            tile: false,
+            tile_rows: 1,
+            tile_cols: 1,
+        };
 
-	if(req.query.confidence) {
-		req.query.confidence = parseFloat(req.query.confidence);
-		if(req.query.confidence > 1) req.query.confidence /= 100;
-		configuration.threshold = req.query.confidence;
-	}
+        if(req.query.overlap) {
+            req.query.overlap = parseFloat(req.query.overlap);
+            if(req.query.overlap > 1) req.query.overlap /= 100;
+            configuration.overlap = req.query.overlap;
+            configuration.nms_threshold = req.query.overlap;
+        }
 
-    //takes a tile query parameter like so tile=3x5
-	if(req.query.tile) {
-        if(false){
-            return res.json({
-                error: "The inference server does not support this query parameter without a hosted image."
+        if(req.query.confidence) {
+            req.query.confidence = parseFloat(req.query.confidence);
+            if(req.query.confidence > 1) req.query.confidence /= 100;
+            configuration.threshold = req.query.confidence;
+        }
+
+        //takes a tile query parameter like so tile=3x5
+        if(req.query.tile) {
+            if(false){
+                return res.json({
+                    error: "The inference server does not support this query parameter without a hosted image."
+                });
+            }
+            //ensure the tile query param looks like tile=3x3
+            if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
+                return res.json({
+                    error: "Tile query parameter improperly formatted."
+                });
+            }
+            configuration.tile = true;
+            const rows_and_cols = req.query.tile.split("x");
+            configuration.tile_rows = rows_and_cols[0];
+            configuration.tile_cols = rows_and_cols[1];
+        }
+
+
+        req.model.configure(configuration);
+
+        if(configuration.tile === true){
+            const tileDimensions = [configuration.tile_rows, configuration.tile_cols];
+            const paddedImage = padImage(tensor, tileDimensions);
+            const tiles = splitImage(paddedImage, tileDimensions);
+            var combinedResult = [];
+            async.eachOf(roboflow.tf.unstack(tiles), function(tile, index, cb) {
+                detect(req, res, tile, function(error, result) {
+                    if(!error){
+                        combinedResult.push(...result.predictions);
+                    } else {
+                        console.log("error after prediction ", error)
+                    }
+                    cb(null);
+                }, {
+                    index: index,
+                    tileDimensions: tileDimensions,
+                    imageDimensions: tensor.shape
+                });
+            }, function() {
+                // all done
+                // send res.json
+                res.json({
+                    predictions: combinedResult
+                });
+            });
+        } else {
+            detect(req, res, tensor, function(error, result){
+                console.log("error on detect", error)
+                res.json({
+                    predictions: result 
+                });
             });
         }
-        //ensure the tile query param looks like tile=3x3
-        if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
-            return res.json({
-                error: "Tile query parameter improperly formatted."
-            });
-        }
-		configuration.tile = true;
-        const rows_and_cols = req.query.tile.split("x");
-        configuration.tile_rows = rows_and_cols[0];
-        configuration.tile_cols = rows_and_cols[1];
-	}
-
-
-	req.model.configure(configuration);
-
-    if(configuration.tile === true){
-        const tileDimensions = [configuration.tile_rows, configuration.tile_cols];
-        const paddedImage = padImage(tensor, tileDimensions);
-        const tiles = splitImage(paddedImage, tileDimensions);
-        var combinedResult = [];
-        async.eachOfSeries(roboflow.tf.unstack(tiles), function(tile, index, cb) {
-            detect(req, res, tile, function(error, result) {
-                if(!error){
-                    combinedResult.push(...result.predictions);
-                } else {
-                    console.log("error after prediction ", error)
-                }
-                cb(null);
-            }, {
-                index: index,
-                tileDimensions: tileDimensions,
-                imageDimensions: tensor.shape
-            });
-        }, function() {
-            // all done
-            // send res.json
-            res.json({
-                predictions: combinedResult
-            });
-            roboflow.tf.dispose(tensor);
-            roboflow.tf.dispose(tiles);
-            roboflow.tf.dispose(paddedImage);
-        });
-    } else {
-        detect(req, res, tensor, function(error, result){
-            console.log("error on detect", error)
-            res.json({
-                predictions: result 
-            });
-        });
-    }
+    })
 };
 
 var loadAndInfer = function(req, res) {
