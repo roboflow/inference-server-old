@@ -44,10 +44,12 @@ const SERVER_START = Date.now();
 //this splits a 3d tensor image into smaller tiles of the image
 //tile size is an array [h, w] of height and width of tile dimensions
 const splitImage = (image3, tileSize) => {
-    const imageShape = image3.shape;
-    const tileRows = image3.reshape([imageShape[0], -1, tileSize[1], imageShape[2]])
-    const serialTiles = roboflow.tf.transpose(tileRows, [1, 0, 2, 3])
-    return roboflow.tf.reshape(serialTiles, [-1, tileSize[1], tileSize[0], imageShape[2]])
+    return roboflow.tf.tidy(() => {
+        const imageShape = image3.shape;
+        const tileRows = image3.reshape([imageShape[0], -1, tileSize[1], imageShape[2]]);
+        const serialTiles = roboflow.tf.transpose(tileRows, [1, 0, 2, 3]);
+        return roboflow.tf.reshape(serialTiles, [-1, tileSize[1], tileSize[0], imageShape[2]]);
+    })
 }
 //pad images to the nearest tile size, tile_size is [H, W]
 const padImage = (image3, tile_size, padding = 0) => {
