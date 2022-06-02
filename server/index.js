@@ -238,6 +238,8 @@ var infer = function(req, res) {
                 predictions: combinedResult
             });
             roboflow.tf.dispose(tensor);
+            roboflow.tf.dispose(tiles);
+            roboflow.tf.dispose(paddedImage);
         });
     } else {
         detect(req, res, tensor, function(error, result){
