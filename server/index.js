@@ -371,6 +371,8 @@ app.post(
         req.dataset = req.params.dataset;
         req.version = req.params.version;
 
+        //run this for memory leak debugging
+        // console.log(roboflow.tf.memory());
         loadAndInfer(req, res);
     }
 );
