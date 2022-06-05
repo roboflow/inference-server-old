@@ -202,15 +202,25 @@ var infer = function(req, res) {
                 });
             }
             //ensure the tile query param looks like tile=3x3
-            if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
+            // if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
+            //     return res.json({
+            //         error: "Tile query parameter improperly formatted."
+            //     });
+            // }
+            configuration.tile = true;
+            // const rows_and_cols = req.query.tile.split("x");
+            // configuration.tile_rows = rows_and_cols[0];
+            // configuration.tile_cols = rows_and_cols[1];
+
+            //temporary until we fix rectangular tiles
+            //force tiles to be square and take a number
+            if (!req.query.tile.match(/([0-9]+)/)){
                 return res.json({
                     error: "Tile query parameter improperly formatted."
                 });
             }
-            configuration.tile = true;
-            const rows_and_cols = req.query.tile.split("x");
-            configuration.tile_rows = rows_and_cols[0];
-            configuration.tile_cols = rows_and_cols[1];
+            configuration.tile_rows = req.query.tile;
+            configuration.tile_cols = req.query.tile;
         }
 
 
