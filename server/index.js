@@ -81,6 +81,7 @@ var loading = {};
 //     tileDimensions: [3,3] 
 //     imageDimensions: [100,100] 
 // })
+//Note: imageDimensions from tensor.shape are given [y, x]
 const detect = (req, res, tensor, cb, tile = false) => {
     req.model.detect(tensor).then(function(predictions) {
 		req.model.inferences = (req.model.inferences||0)+1;
@@ -106,11 +107,12 @@ const detect = (req, res, tensor, cb, tile = false) => {
                 //this needs to have the tile offset added if we're tiling
                 if(!!tile){
                     //number of rows and columns in each direction
-                    const numX = Math.ceil(tile.imageDimensions[0] / tile.tileDimensions[0]);
+                    // remember imageDimensions are [y,x] because of tensor.shape
+                    const numRows = Math.ceil(tile.imageDimensions[0] / tile.tileDimensions[1]);
 
                     // calculate the pixel offset based on tile index and dimensions
-                    const xOffset = tile.index % numX * tile.tileDimensions[0];
-                    const yOffset = Math.floor(tile.index / numX) * tile.tileDimensions[1];
+                    const xOffset = Math.floor(tile.index / numRows) * tile.tileDimensions[0];
+                    const yOffset = tile.index % numRows * tile.tileDimensions[1];
                     x = x + xOffset;
                     y = y + yOffset;
                 }
@@ -230,7 +232,7 @@ var infer = function(req, res) {
                 }, {
                     index: index,
                     tileDimensions: tileDimensions,
-                    imageDimensions: tensor.shape
+                    imageDimensions: paddedImage.shape
                 });
             }, function() {
                 // all done
@@ -244,9 +246,7 @@ var infer = function(req, res) {
                 if(error){
                     console.log("error on detect", error)
                 }
-                res.json({
-                    predictions: result 
-                });
+                res.json(result);
             });
         }
     })
