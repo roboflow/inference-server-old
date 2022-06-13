@@ -82,12 +82,11 @@ var loading = {};
 //     imageDimensions: [100,100] 
 // })
 //Note: imageDimensions from tensor.shape are given [y, x]
-const detect = (req, res, tensor, cb, tile = false) => {
+const detect = (req, res, start, tensor, cb, tile = false) => {
     req.model.detect(tensor).then(function(predictions) {
 		req.model.inferences = (req.model.inferences||0)+1;
 
 
-        var start = Date.now();
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
 
             var allowed_classes = null; // allow all
@@ -219,7 +218,7 @@ var infer = function(req, res) {
             const tiles = splitImage(paddedImage, tileDimensions);
             var combinedResult = [];
             async.eachOf(roboflow.tf.unstack(tiles), function(tile, index, cb) {
-                detect(req, res, tile, function(error, result) {
+                detect(req, res, start, tile, function(error, result) {
                     if(!error){
                         combinedResult.push(...result.predictions);
                     } else {
@@ -237,7 +236,7 @@ var infer = function(req, res) {
                 });
             });
         } else {
-            detect(req, res, tensor, function(error, result){
+            detect(req, res, start, tensor, function(error, result){
                 if(error){
                     console.log("error on detect", error)
                 }
