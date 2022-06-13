@@ -90,7 +90,7 @@ const detect = (req, res, tensor, cb, tile = false) => {
         var start = Date.now();
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
 
-        var allowed_classes = null; // allow all
+            var allowed_classes = null; // allow all
         if(req.query.classes) {
             allowed_classes = _.map(req.query.classes.split(","), function(cls) {
                 return cls.trim();
@@ -133,9 +133,6 @@ const detect = (req, res, tensor, cb, tile = false) => {
         cb(null, ret);
     }).catch(function(e) {
         cb(e, null)
-        // res.json({
-        //     error: e
-        // });
     }).finally(function() {
         roboflow.tf.dispose(tensor);
     });
@@ -201,19 +198,9 @@ var infer = function(req, res) {
                     error: "The inference server does not support this query parameter without a hosted image."
                 });
             }
-            //ensure the tile query param looks like tile=3x3
-            // if (!req.query.tile.match(/([0-9]+x[0-9]+)/)?.length > 0){
-            //     return res.json({
-            //         error: "Tile query parameter improperly formatted."
-            //     });
-            // }
             configuration.tile = true;
-            // const rows_and_cols = req.query.tile.split("x");
-            // configuration.tile_rows = rows_and_cols[0];
-            // configuration.tile_cols = rows_and_cols[1];
 
-            //temporary until we fix rectangular tiles
-            //force tiles to be square and take a number
+            //ensure the tile query param looks like tile=300
             if (!req.query.tile.match(/([0-9]+)/)){
                 return res.json({
                     error: "Tile query parameter improperly formatted."
@@ -245,8 +232,6 @@ var infer = function(req, res) {
                     imageDimensions: paddedImage.shape
                 });
             }, function() {
-                // all done
-                // send res.json
                 res.json({
                     predictions: combinedResult
                 });
