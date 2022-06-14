@@ -89,7 +89,7 @@ const detect = (req, res, start, tensor, cb, tile = false) => {
 
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
 
-            var allowed_classes = null; // allow all
+        var allowed_classes = null; // allow all
         if(req.query.classes) {
             allowed_classes = _.map(req.query.classes.split(","), function(cls) {
                 return cls.trim();
@@ -190,19 +190,14 @@ var infer = function(req, res) {
             configuration.threshold = req.query.confidence;
         }
 
-        //takes a tile query parameter like so tile=3x5
+        //takes a tile query parameter like so tile=300
         if(req.query.tile) {
-            if(false){
-                return res.json({
-                    error: "The inference server does not support this query parameter without a hosted image."
-                });
-            }
             configuration.tile = true;
 
             //ensure the tile query param looks like tile=300
             if (!req.query.tile.match(/([0-9]+)/)){
                 return res.json({
-                    error: "Tile query parameter improperly formatted."
+                    error: "Tile query parameter improperly formatted. Tile takes a pixel value like so: tile=300"
                 });
             }
             configuration.tile_rows = req.query.tile;
