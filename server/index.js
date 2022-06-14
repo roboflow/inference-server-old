@@ -40,6 +40,25 @@ app.set("json spaces", 4);
 
 const SERVER_START = Date.now();
 
+//inspired by https://stackoverflow.com/questions/38235643/getting-started-with-tensorflow-split-image-into-sub-images
+//this splits a 3d tensor image into smaller tiles of the image
+//tile size is an array [h, w] of height and width of tile dimensions
+const splitImage = (image3, tileSize) => {
+    return roboflow.tf.tidy(() => {
+        const imageShape = image3.shape;
+        const tileRows = image3.reshape([imageShape[0], -1, tileSize[1], imageShape[2]]);
+        const serialTiles = roboflow.tf.transpose(tileRows, [1, 0, 2, 3]);
+        return roboflow.tf.reshape(serialTiles, [-1, tileSize[1], tileSize[0], imageShape[2]]);
+    })
+}
+//pad images to the nearest tile size, tile_size is [H, W]
+const padImage = (image3, tile_size, padding = 0) => {
+    const imagesize = image3.shape.slice(0,2);
+    const paddingX = Math.ceil(imagesize[0] / tile_size[0]) * tile_size[0] - imagesize[0]
+    const paddingY = Math.ceil(imagesize[1] / tile_size[1]) * tile_size[1] - imagesize[1]
+    return roboflow.tf.pad(image3, [[0, paddingX], [0, paddingY], [0, 0]], padding)
+}
+
 app.get("/", function(req, res) {
     res.json({
         server: {
@@ -56,74 +75,48 @@ app.get("/", function(req, res) {
 var models = {};
 var loading = {};
 
-var infer = function(req, res) {
-	if(req.query.format && req.query.format == "image") {
-		return res.json({
-			error: "The inference server does not yet support returning a visualization of the prediction."
-		});
-	}
-
-	var start = Date.now();
-
-    var buffer = Buffer.from(req.body, "base64");
-    var arr = new Uint8Array(buffer);
-
-	var tensor;
-	try {
-		// works for decoding 3 channel (rgb) and 4 channel (rgba) images
-    	tensor = roboflow.tf.node.decodeImage(arr, 3);
-	} catch(e) {
-		// handle 1 channel (grayscale) images
-		// which throw an error if you try to force them to be decoded with 3 channels
-		var channel = roboflow.tf.node.decodeImage(arr, 1);
-		tensor = roboflow.tf.stack([
-			channel,
-			channel,
-			channel
-		], 2).squeeze();
-		roboflow.tf.dispose(channel);
-	}
-
-	var configuration = {
-		max_objects: Number.MAX_SAFE_INTEGER,
-		overlap: 0.3,
-		nms_threshold: 0.3,
-		threshold: 0.4
-	};
-
-	if(req.query.overlap) {
-		req.query.overlap = parseFloat(req.query.overlap);
-		if(req.query.overlap > 1) req.query.overlap /= 100;
-		configuration.overlap = req.query.overlap;
-		configuration.nms_threshold = req.query.overlap;
-	}
-
-	if(req.query.confidence) {
-		req.query.confidence = parseFloat(req.query.confidence);
-		if(req.query.confidence > 1) req.query.confidence /= 100;
-		configuration.threshold = req.query.confidence;
-	}
-
-	var allowed_classes = null; // allow all
-	if(req.query.classes) {
-		allowed_classes = _.map(req.query.classes.split(","), function(cls) {
-			return cls.trim();
-		});
-	}
-
-	req.model.configure(configuration);
-
-    req.model.detect(tensor).then(function(predictions) {
+//tile is structured like so:
+// {
+//     index: index,
+//     tileDimensions: [3,3] 
+//     imageDimensions: [100,100] 
+// })
+//Note: imageDimensions from tensor.shape are given [y, x]
+const detect = (req, res, start, tensor, tile = false) => {
+    return req.model.detect(tensor).then( predictions => {
 		req.model.inferences = (req.model.inferences||0)+1;
+
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
+
+        var allowed_classes = null; // allow all
+        if(req.query.classes) {
+            allowed_classes = _.map(req.query.classes.split(","), function(cls) {
+                return cls.trim();
+            });
+        }
 
 		var ret = {
             predictions: _.chain(predictions).map(function(p) {
 				if(allowed_classes && !allowed_classes.includes(p.class)) return null;
 
+                let x = Math.round(p.bbox.x * 10)/10;
+                let y = Math.round(p.bbox.y * 10)/10;
+
+                //this needs to have the tile offset added if we're tiling
+                if(!!tile){
+                    //number of rows and columns in each direction
+                    // remember imageDimensions are [y,x] because of tensor.shape
+                    const numRows = Math.ceil(tile.imageDimensions[0] / tile.tileDimensions[1]);
+
+                    // calculate the pixel offset based on tile index and dimensions
+                    const xOffset = Math.floor(tile.index / numRows) * tile.tileDimensions[0];
+                    const yOffset = tile.index % numRows * tile.tileDimensions[1];
+                    x = x + xOffset;
+                    y = y + yOffset;
+                }
                 return {
-                    x: Math.round(p.bbox.x * 10)/10,
-                    y: Math.round(p.bbox.y * 10)/10,
+                    x: x,
+                    y: y,
                     width: Math.round(p.bbox.width),
                     height: Math.round(p.bbox.height),
                     class: p.class,
@@ -135,14 +128,119 @@ var infer = function(req, res) {
 		var conf = req.model.getConfiguration();
 		if(conf.expiration) ret.expiration = conf.expiration;
 
-        res.json(ret);
+        return Promise.resolve(ret);
     }).catch(function(e) {
-        res.json({
-            error: e
-        });
-    }).finally(function() {
-        roboflow.tf.dispose(tensor);
+        return Promise.reject(e);
     });
+}
+
+var infer = function(req, res) {
+	if(req.query.format && req.query.format == "image") {
+		return res.json({
+			error: "The inference server does not yet support returning a visualization of the prediction."
+		});
+	}
+
+    roboflow.tf.tidy(() => {
+
+        var start = Date.now();
+
+        var buffer = Buffer.from(req.body, "base64");
+        var arr = new Uint8Array(buffer);
+
+        var tensor;
+        try {
+            // works for decoding 3 channel (rgb) and 4 channel (rgba) images
+            tensor = roboflow.tf.node.decodeImage(arr, 3);
+        } catch(e) {
+            // handle 1 channel (grayscale) images
+            // which throw an error if you try to force them to be decoded with 3 channels
+            var channel = roboflow.tf.node.decodeImage(arr, 1);
+            tensor = roboflow.tf.stack([
+                channel,
+                channel,
+                channel
+            ], 2).squeeze();
+            roboflow.tf.dispose(channel);
+        }
+
+        var configuration = {
+            max_objects: Number.MAX_SAFE_INTEGER,
+            overlap: 0.3,
+            nms_threshold: 0.3,
+            threshold: 0.4,
+            tile: false,
+            tile_rows: 1,
+            tile_cols: 1,
+        };
+
+        if(req.query.overlap) {
+            req.query.overlap = parseFloat(req.query.overlap);
+            if(req.query.overlap > 1) req.query.overlap /= 100;
+            configuration.overlap = req.query.overlap;
+            configuration.nms_threshold = req.query.overlap;
+        }
+
+        if(req.query.confidence) {
+            req.query.confidence = parseFloat(req.query.confidence);
+            if(req.query.confidence > 1) req.query.confidence /= 100;
+            configuration.threshold = req.query.confidence;
+        }
+
+        //takes a tile query parameter like so tile=300
+        if(req.query.tile) {
+            configuration.tile = true;
+
+            //ensure the tile query param looks like tile=300
+            if (!req.query.tile.match(/([0-9]+)/)){
+                return res.json({
+                    error: "Tile query parameter improperly formatted. Tile takes a pixel value like so: tile=300"
+                });
+            }
+            configuration.tile_rows = req.query.tile;
+            configuration.tile_cols = req.query.tile;
+        }
+
+
+        req.model.configure(configuration);
+
+        if(configuration.tile === true){
+            const tileDimensions = [configuration.tile_rows, configuration.tile_cols];
+            const paddedImage = padImage(tensor, tileDimensions);
+            const tiles = splitImage(paddedImage, tileDimensions);
+            var combinedResult = [];
+            async.eachOf(roboflow.tf.unstack(tiles), async function(tile, index) {
+                return await detect(req, res, start, tile, {
+                    index: index,
+                    tileDimensions: tileDimensions,
+                    imageDimensions: paddedImage.shape
+                }).then((result) => {
+                    combinedResult.push(...result.predictions)
+                    return Promise.resolve();
+                }).catch(error => {
+                    combinedResult.push(...[{error: error.message}])
+                    return Promise.reject();
+                });
+            }).then((result) => {
+                res.json({
+                    predictions: combinedResult
+                });
+            }).catch(error => {
+                res.json({
+                    predictions: combinedResult
+                });
+            });
+        } else {
+            detect(req, res, start, tensor)
+            .then(result => {
+                res.json(result);
+            }).catch(error => {
+                res.json({
+                    error: error.message
+                });
+            });
+        }
+    })
 };
 
 var loadAndInfer = function(req, res) {
@@ -190,7 +288,7 @@ var loadAndInfer = function(req, res) {
                     infer(req, res);
                 });
             });
-
+            
             delete loading[modelId];
         }).catch(function(e) {
             _.each(loading[modelId], function(info) {
@@ -264,6 +362,8 @@ app.post(
         req.dataset = req.params.dataset;
         req.version = req.params.version;
 
+        //run this for tensor memory leak debugging
+        // console.log(roboflow.tf.memory());
         loadAndInfer(req, res);
     }
 );
