@@ -82,10 +82,9 @@ var loading = {};
 //     imageDimensions: [100,100] 
 // })
 //Note: imageDimensions from tensor.shape are given [y, x]
-const detect = (req, res, start, tensor, cb, tile = false) => {
-    req.model.detect(tensor).then(function(predictions) {
+const detect = (req, res, start, tensor, tile = false) => {
+    return req.model.detect(tensor).then( predictions => {
 		req.model.inferences = (req.model.inferences||0)+1;
-
 
 		req.model.totalTime = (req.model.totalTime||0)+(Date.now()-start);
 
@@ -129,11 +128,11 @@ const detect = (req, res, start, tensor, cb, tile = false) => {
 		var conf = req.model.getConfiguration();
 		if(conf.expiration) ret.expiration = conf.expiration;
 
-        cb(null, ret);
-    }).catch(function(e) {
-        cb(e, null)
-    }).finally(function() {
         roboflow.tf.dispose(tensor);
+        return Promise.resolve(ret);
+    }).catch(function(e) {
+        roboflow.tf.dispose(tensor);
+        return Promise.reject(e);
     });
 }
 
@@ -212,30 +211,35 @@ var infer = function(req, res) {
             const paddedImage = padImage(tensor, tileDimensions);
             const tiles = splitImage(paddedImage, tileDimensions);
             var combinedResult = [];
-            async.eachOf(roboflow.tf.unstack(tiles), function(tile, index, cb) {
-                detect(req, res, start, tile, function(error, result) {
-                    if(!error){
-                        combinedResult.push(...result.predictions);
-                    } else {
-                        console.log("error after prediction ", error)
-                    }
-                    cb(null);
-                }, {
+            async.eachOf(roboflow.tf.unstack(tiles), async function(tile, index) {
+                return await detect(req, res, start, tile, {
                     index: index,
                     tileDimensions: tileDimensions,
                     imageDimensions: paddedImage.shape
+                }).then((result) => {
+                    combinedResult.push(...result.predictions)
+                    return Promise.resolve();
+                }).catch(error => {
+                    combinedResult.push(...[{error: error.message}])
+                    return Promise.reject();
                 });
-            }, function() {
+            }).then((result) => {
+                res.json({
+                    predictions: combinedResult
+                });
+            }).catch(error => {
                 res.json({
                     predictions: combinedResult
                 });
             });
         } else {
-            detect(req, res, start, tensor, function(error, result){
-                if(error){
-                    console.log("error on detect", error)
-                }
+            detect(req, res, start, tensor)
+            .then(result => {
                 res.json(result);
+            }).catch(error => {
+                res.json({
+                    error: error.message
+                });
             });
         }
     })
@@ -286,7 +290,7 @@ var loadAndInfer = function(req, res) {
                     infer(req, res);
                 });
             });
-
+            
             delete loading[modelId];
         }).catch(function(e) {
             _.each(loading[modelId], function(info) {
@@ -360,7 +364,7 @@ app.post(
         req.dataset = req.params.dataset;
         req.version = req.params.version;
 
-        //run this for memory leak debugging
+        //run this for tensor memory leak debugging
         // console.log(roboflow.tf.memory());
         loadAndInfer(req, res);
     }
