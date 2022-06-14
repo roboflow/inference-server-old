@@ -128,10 +128,8 @@ const detect = (req, res, start, tensor, tile = false) => {
 		var conf = req.model.getConfiguration();
 		if(conf.expiration) ret.expiration = conf.expiration;
 
-        roboflow.tf.dispose(tensor);
         return Promise.resolve(ret);
     }).catch(function(e) {
-        roboflow.tf.dispose(tensor);
         return Promise.reject(e);
     });
 }
