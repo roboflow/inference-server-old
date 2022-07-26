@@ -9,7 +9,7 @@ docker buildx build --platform linux/amd64,linux/arm64 --output=image -t "robofl
 
 echo ""
 echo "🛠 : Building roboflow/inference-server:gpu"
-docker buildx build --platform linux/amd64,linux/arm64 --output=image -t "roboflow/inference-server:gpu" -f- . < Dockerfile.gpu
+docker buildx build --platform linux/amd64 --output=image -t "roboflow/inference-server:gpu" -f- . < Dockerfile.gpu
 
 echo ""
 echo "🛠 : Building roboflow/inference-server:jetson"
