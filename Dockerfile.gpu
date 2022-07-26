@@ -26,7 +26,7 @@ RUN rm -rf ./node_modules && \
     npm install --target_platform=$TARGETOS --target_arch=$TARGETARCH pm2 -g
 
 # tfjs on arm needs to be rebuilt from source
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
         npm rebuild --target_platform=$TARGETOS --target_arch=$TARGETARCH @tensorflow/tfjs-node --build-from-source; \
     fi 
 

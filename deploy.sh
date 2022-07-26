@@ -9,7 +9,7 @@ docker buildx build --platform linux/amd64,linux/arm64 --push -t "roboflow/infer
 
 echo ""
 echo "🛠 : Building roboflow/inference-server:gpu"
-docker buildx build --platform linux/amd64,linux/arm64 --push -t "roboflow/inference-server:gpu" -f- . < Dockerfile.gpu
+docker buildx build --platform linux/amd64 --push -t "roboflow/inference-server:gpu" -f- . < Dockerfile.gpu
 
 echo ""
 echo "🛠 : Building roboflow/inference-server:jetson"
