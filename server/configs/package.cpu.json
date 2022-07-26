@@ -1,7 +1,7 @@
 {
   "name": "roboflow-inference-server-cpu",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Roboflow Infer on-prem server.",
   "main": "index.js",
   "scripts": {
@@ -39,6 +39,6 @@
     "express": "^4.17.1",
     "express-bearer-token": "^2.4.0",
     "lodash": "^4.17.21",
-    "roboflow-node": "^0.2.21"
+    "roboflow-node": "^0.2.22"
   }
 }
