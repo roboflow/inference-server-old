@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04
+FROM --platform=$TARGETPLATFORM nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04
 MAINTAINER Roboflow <docker@roboflow.com>
 ENV TZ=Etc/UTC
 ENV ROBOFLOW_PACKAGE="roboflow-node-gpu"
@@ -15,11 +15,20 @@ RUN curl -L https://raw.githubusercontent.com/tj/n/master/bin/n -o /usr/local/bi
 COPY ["./", "/inference-server"]
 RUN cp /inference-server/server/configs/package.gpu.json /inference-server/server/package.json
 
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
 # Install proper dependencies
 WORKDIR /inference-server/server
 RUN rm -rf ./node_modules && \
-    npm install && \
-    npm install pm2 -g
+    npm install --target_platform=$TARGETOS --target_arch=$TARGETARCH && \
+    npm install --target_platform=$TARGETOS --target_arch=$TARGETARCH pm2 -g
+
+# tfjs on arm needs to be rebuilt from source
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+        npm rebuild --target_platform=$TARGETOS --target_arch=$TARGETARCH @tensorflow/tfjs-node --build-from-source; \
+    fi 
 
 # RUN ln -s /usr/local/cuda/bin/ptxas bin/ptxas
 # RUN chmod +x bin/ptxas
