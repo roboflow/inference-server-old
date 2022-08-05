@@ -1,9 +1,11 @@
 {
-  "name": "roboflow-inference-server-cpu",
-  "private": true,
+  "name": "@roboflow/inference-server",
   "version": "1.2.0",
   "description": "Roboflow Infer on-prem server.",
   "main": "index.js",
+  "bin": {
+    "inference-server": "./npx/inference-server.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
