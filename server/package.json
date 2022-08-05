@@ -1,0 +1,45 @@
+{
+  "name": "roboflow-inference-server-cpu",
+  "private": true,
+  "version": "1.2.0",
+  "description": "Roboflow Infer on-prem server.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roboflow-ai/inference-server.git"
+  },
+  "keywords": [
+    "roboflow",
+    "computer",
+    "vision",
+    "tfjs",
+    "tensorflow",
+    "object",
+    "detection",
+    "ml",
+    "machine",
+    "learning",
+    "ai"
+  ],
+  "author": "Roboflow",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/roboflow-ai/inference-server/issues"
+  },
+  "homepage": "https://github.com/roboflow-ai/inference-server#readme",
+  "dependencies": {
+    "@tensorflow/tfjs-backend-wasm": "^3.19.0",
+    "async": "^3.2.0",
+    "axios": "^0.21.1",
+    "body-parser": "^1.19.0",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-bearer-token": "^2.4.0",
+    "lodash": "^4.17.21",
+    "roboflow-node": "^0.2.22"
+  }
+}

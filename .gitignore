@@ -1,5 +1,6 @@
 image
-server/package*.json
+server/package.*.json
+server/package-lock.json
 .DS_STORE
 
 # Logs
