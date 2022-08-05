@@ -1,5 +1,6 @@
 image
 server/package*.json
+.DS_STORE
 
 # Logs
 logs
