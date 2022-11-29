@@ -245,7 +245,6 @@ var infer = function(req, res) {
                 if ("image" in result === false)
                     result["image"] = {'width': width, 'height': height}
        
-                console.log(`*** result ${JSON.stringify(result)}`)
                 res.json(result);
             }).catch(error => {
                 res.json({
