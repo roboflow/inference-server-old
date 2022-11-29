@@ -231,11 +231,13 @@ var infer = function(req, res) {
                 });
             }).then((result) => {
                 res.json({
-                    predictions: combinedResult
+                    predictions: combinedResult,
+                    image: {'width': width, 'height': height}
                 });
             }).catch(error => {
                 res.json({
-                    predictions: combinedResult
+                    predictions: combinedResult,
+                    image: {'width': width, 'height': height}
                 });
             });
         } else {
