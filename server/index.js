@@ -20,6 +20,8 @@ const async = require("async");
 const _ = require("lodash");
 const fs = require("fs");
 
+const sizeOf = require('image-size')
+
 const package_info = JSON.parse(fs.readFileSync(__dirname + "/package.json"));
 
 //var staging = true;
@@ -146,6 +148,12 @@ var infer = function(req, res) {
         var start = Date.now();
 
         var buffer = Buffer.from(req.body, "base64");
+
+        // use sizeOf on buffer to get image width and height
+        var dimensions = sizeOf(buffer);
+        var width = dimensions.width 
+        var height = dimensions.height
+
         var arr = new Uint8Array(buffer);
 
         var tensor;
@@ -232,7 +240,12 @@ var infer = function(req, res) {
             });
         } else {
             detect(req, res, start, tensor)
-            .then(result => {
+            .then(result => {  
+                // apply width and height to response object       
+                if ("image" in result === false)
+                    result["image"] = {'width': width, 'height': height}
+       
+                console.log(`*** result ${JSON.stringify(result)}`)
                 res.json(result);
             }).catch(error => {
                 res.json({
