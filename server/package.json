@@ -1,6 +1,6 @@
 {
   "name": "@roboflow/inference-server",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Roboflow Infer on-prem server.",
   "main": "index.js",
   "bin": {
@@ -43,6 +43,6 @@
     "express-bearer-token": "^2.4.0",
     "image-size": "^1.0.2",
     "lodash": "^4.17.21",
-    "roboflow-node": "^0.2.22"
+    "roboflow-node": "^0.2.25"
   }
 }
