@@ -1,3 +1,16 @@
+# ⚠️ DEPRECATION WARNING
+
+The code in this repo is deprecated. It contains the code for the old Node.js based Roboflow Inference server powered by
+[roboflow.js](https://docs.roboflow.com/deploy/web-browser) and TFjs-node.
+
+The [new Roboflow Inference Server](https://github.com/roboflow/inference) is
+open-source, faster, supports more models, works on more devices,
+has more features, is under active development, and is better in every way.
+
+You should [use that](https://github.com/roboflow/inference) instead.
+
+<details close>
+<summary>Old Readme Content</summary>
 # Roboflow Edge Inference Server
 
 The Roboflow Edge Inference Server is an on-device implementation of our
@@ -100,3 +113,4 @@ computer vision into your applications all the way from annotation to deployment
 
 [Get started](https://app.roboflow.com) with a free account and you'll have
 a working model tailored to your specific use-case in an afternoon.
+</details>
