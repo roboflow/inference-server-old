@@ -4,8 +4,8 @@ The code in this repo is deprecated. It contains the code for the old Node.js ba
 [roboflow.js](https://docs.roboflow.com/deploy/web-browser) and TFjs-node.
 
 The [new Roboflow Inference Server](https://github.com/roboflow/inference) is
-fully open-source, faster, supports more models, works on more devices,
-has more features,  is under active development, and is better in every way.
+open-source, faster, supports more models, works on more devices,
+has more features, is under active development, and is better in every way.
 
 You should [use that](https://github.com/roboflow/inference) instead.
 
